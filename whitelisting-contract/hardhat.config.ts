@@ -6,7 +6,7 @@ import { resolve } from 'path';
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 const config = { 
-
+    TOKEN_MINIMUM_TIME_BETWEEN_MINTS: process.env.TOKEN_MINIMUM_TIME_BETWEEN_MINTS
 };
 
 export default {
