@@ -4,6 +4,8 @@ import "./IERC20.sol";
 import "./IUSDT.sol";
 import "./ECRecover.sol";
 import "./EIP712.sol";
+import "./Governance.sol";
+import "./Utils.sol";
 
 contract wBTC is IERC20 {
     using SafeMath for uint256;
@@ -17,8 +19,77 @@ contract wBTC is IERC20 {
     mapping(address => mapping(address => uint256)) internal allowed;
     uint256 internal totalSupply_ = 0;
 
+    Governance public governance;
+
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, address indexed to, uint256 amount);
+
+    uint256 internal rootHash;
+
+    uint256 constant BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER = 3 hours;
+    uint256 constant BLOCK_TIMESTAMP_POSSIBLE_DELTA = 1 minutes;
+
+    function wBTC(Governance _governance, uint256 _initialRootHash) public {
+        governance = _governance;
+        rootHash = _initialRootHash;
+    }
+
+    event FeeCollected(address indexed from, address feeAccount, uint256 fee);
+
+    uint256 constant BYTES_PER_TRANSACTION = 5 * 32;
+
+    function _cheapTransactionsProcessing(
+        bytes memory _transactionsData,
+        bytes memory _transactionsToProcess,
+        address _feeAccount
+    ) internal {
+        uint256 totalFee = 0;
+        for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i++) {
+            if (_transactionsToProcess[i / BYTES_PER_TRANSACTION]) {
+                bytes memory currentTransactionBytes = Utils.slice(_transactionsData, i * BYTES_PER_TRANSACTION, BYTES_PER_TRANSACTION);
+                (
+                    address from,
+                    address to,
+                    uint256 amount,
+                    uint256 fee,
+                ) = abi.decode(currentTransactionBytes, (address, address, uint256, uint256));
+                if (balances[from] >= amount.add(fee)) {
+                    balances[from] = balances[from].sub(amount.add(fee));
+                    balances[to] = balances[to].add(amount);
+                    emit Transfer(from, to, amount);
+
+                    totalFee = totalFee.add(fee);
+                    emit FeeCollected(from, _feeAccount, fee);
+                }
+            }
+        }
+
+        balances[_feeAccount] = balances[_feeAccount].add(totalFee);
+    }
+
+    function proveBlock(
+        uint256 _newStorageRoot,
+        address _feeAccount,
+        uint256 _blockTimestamp,
+        bytes calldata _transactionsData,
+        bytes calldata _transactionsToProcess
+    ) external {
+        require(governance.isOperatorValid(msg.sender));
+
+        bytes32 commitment = sha256(abi.encodePacked(rootHash, _newStorageRoot);
+        commitment = sha256(abi.encodePacked(commitment, _feeAccount));
+        commitment = sha256(abi.encodePacked(commitment, _blockTimestamp));
+        commitment = sha256(abi.encodePacked(commitment, _transactionsData));
+        /// TODO :)
+        /// verify circuit with `commitment` as an input
+
+        require(_blockTimestamp >= now - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
+        require(_blockTimestamp <= now + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
+
+        _cheapTransactionsProcessing(_transactionsData, _transactionsToProcess, _feeAccount);
+
+        rootHash = _newStorageRoot;
+    }
 
     /**
      * @dev Function to mint tokens
@@ -748,6 +819,27 @@ contract wBTC is IERC20 {
         uint256 increment
     ) internal {
         _approve(owner, spender, allowed[owner][spender].add(increment));
+    }
+
+    /**
+     * @notice Internal function to decrease the allowance by a given decrement
+     * @param owner     Token owner's address
+     * @param spender   Spender's address
+     * @param decrement Amount of decrease
+     */
+    function _decreaseAllowance(
+        address owner,
+        address spender,
+        uint256 decrement
+    ) internal {
+        _approve(
+            owner,
+            spender,
+            allowed[owner][spender].sub(
+                decrement,
+                "ERC20: decreased allowance below zero"
+            )
+        );
     }
 
     /**

@@ -185,7 +185,6 @@ impl<'a, E: RescueEngine + JubjubEngine> TransactionsBlockCircuit<'a, E> {
         onchain_data.extend(to.into_padded_be_bits(256));
         onchain_data.extend(amount.into_padded_be_bits(256));
         onchain_data.extend(fee.into_padded_be_bits(256));
-        onchain_data.extend(nonce.into_padded_be_bits(256));
 
         Ok(())
     }
