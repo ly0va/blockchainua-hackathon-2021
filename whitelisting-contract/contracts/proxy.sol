@@ -8,10 +8,30 @@ contract Proxy {
     /// @dev Storage position of "target" (actual implementation address: keccak256('eip1967.proxy.implementation') - 1)
     bytes32 private constant TARGET_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
+    // we allow calling *all* methods on targets stored here (for convenience)
     mapping(address => bool) public allowedTargets;
+    // we allow passing < 4 bytes of calldata in calls to targets stored here
     mapping(address => bool) public allowedFallback;
+    // we allow calling only specific methods on targets stored here
     mapping(address => mapping(bytes4 => bool)) public allowedMethods;
+    // we allow calling specific methods with arguments that are validated by predicates, stored here
     mapping(address => mapping(bytes4 => address)) public predicates;
+
+    function setTargetStatus(address target, bool status) public {
+        allowedTargets[target] = status;
+    }
+
+    function setFallbackStatus(address target, bool status) public {
+        allowedFallback[target] = status;
+    }
+
+    function setMethodStatus(address target, bytes4 selector, bool status) public {
+        allowedMethods[target][selector] = status;
+    }
+
+    function setPredicate(address target, bytes4 selector, address predicate) public {
+        predicates[target][selector] = predicate;
+    }
 
     /// @notice Returns target of contract
     /// @return target Actual implementation address
