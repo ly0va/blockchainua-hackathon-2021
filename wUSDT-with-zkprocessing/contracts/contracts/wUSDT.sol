@@ -36,7 +36,7 @@ contract wBTC is IERC20 {
 
     event FeeCollected(address indexed from, address feeAccount, uint256 fee);
 
-    uint256 constant BYTES_PER_TRANSACTION = 5 * 32;
+    uint256 constant BYTES_PER_TRANSACTION = 20 + 20 + 32 + 32;
 
     function _cheapTransactionsProcessing(
         bytes memory _transactionsData,
