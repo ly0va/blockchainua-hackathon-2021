@@ -1,5 +1,9 @@
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-solpp';
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from 'path';
+
+dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 const config = { 
 
@@ -7,7 +11,7 @@ const config = {
 
 export default {
     solidity: {
-        version: '0.7.6',
+        version: '0.8.0',
         settings: {
             optimizer: {
                 enabled: true,
