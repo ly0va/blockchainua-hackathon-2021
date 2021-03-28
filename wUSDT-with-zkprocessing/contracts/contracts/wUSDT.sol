@@ -14,7 +14,6 @@ contract wUSDT is IERC20, EIP712Domain {
     string  public name     = "Wrapped USDT";
     string  public symbol   = "wUSDT";
     uint8   public decimals = 6;
-    address public USDT     = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
     mapping(address => uint256) internal balances;
     mapping(address => mapping(address => uint256)) internal allowed;
@@ -25,13 +24,16 @@ contract wUSDT is IERC20, EIP712Domain {
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, address indexed to, uint256 amount);
 
+    address public USDT;
+
     uint256 internal rootHash;
 
     uint256 constant BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER = 3 hours;
     uint256 constant BLOCK_TIMESTAMP_POSSIBLE_DELTA = 1 minutes;
 
-    constructor(Governance _governance, uint256 _initialRootHash) public {
+    constructor(Governance _governance, address _USDT, uint256 _initialRootHash) public {
         governance = _governance;
+        USDT = _USDT;
         rootHash = _initialRootHash;
 
         DOMAIN_SEPARATOR = EIP712.makeDomainSeparator("wUSDT", "1");
