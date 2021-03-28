@@ -79,9 +79,11 @@ contract Proxy is Ownable {
             require(allowedTargets[target] || allowedFallback[target], 'Invalid target to call fallback on');
         }
 
-        // call or delegatecall?
-        (bool success, bytes memory output) = target.call(input);
+        (bool success, bytes memory output) = target.delegatecall(input);
         require(success, 'Call failed');
         return output;
     }
+
+    // THIS IS FOR TESTING PURPOSES ONLY
+    event Called(string indexed method);
 }
