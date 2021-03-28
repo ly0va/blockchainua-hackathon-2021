@@ -123,7 +123,6 @@ contract Governornance {
         newProposal.canceled = false;
         newProposal.executed = false;
 
-
         latestProposalIds[newProposal.proposer] = newProposal.id;
 
         emit ProposalCreated(newProposal.id, msg.sender, address(target), value, signature, calldatas, startBlock, endBlock);

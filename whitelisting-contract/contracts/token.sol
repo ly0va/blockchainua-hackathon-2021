@@ -75,8 +75,6 @@ contract ERC20Token {
      * @param mintingAllowedAfter_ The timestamp after which minting may occur
      */
     constructor(address account, address minter_, uint mintingAllowedAfter_) public {
-        require(mintingAllowedAfter_ >= block.timestamp, "ZKM::constructor: minting can only begin after deployment");
-
         balances[account] = totalSupply;
         emit Transfer(address(0), account, totalSupply);
         minter = minter_;
