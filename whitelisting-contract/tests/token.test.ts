@@ -16,7 +16,7 @@ describe('Tests', () => {
     before('deploy Zkam token contract', async () => {
         [deployer, minter, alice, bob] = await hardhat.ethers.getSigners();
         const factory = await hardhat.ethers.getContractFactory('ERC20Token');
-        Zkam = await factory.connect(deployer).deploy(minter.getAddress(), minter.getAddress(), 0);
+        Zkam = await factory.connect(deployer).deploy(minter.getAddress(), minter.getAddress());
     });
 
     it('check initial balances', async () => {
