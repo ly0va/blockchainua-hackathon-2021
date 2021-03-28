@@ -41,7 +41,7 @@ contract wUSDT is IERC20, EIP712Domain {
 
     event FeeCollected(address indexed from, address feeAccount, uint256 fee);
 
-    uint256 constant BYTES_PER_TRANSACTION = 20 + 20 + 32 + 32;
+    uint256 constant BYTES_PER_TRANSACTION = 128;
 
     function _cheapTransactionsProcessing(
         bytes memory _transactionsData,
@@ -49,9 +49,9 @@ contract wUSDT is IERC20, EIP712Domain {
         address _feeAccount
     ) internal {
         uint256 totalFee = 0;
-        for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i++) {
+        for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i += BYTES_PER_TRANSACTION) {
             if (uint8(_transactionsToProcess[i / BYTES_PER_TRANSACTION]) != 0) {
-                bytes memory currentTransactionBytes = Utils.slice(_transactionsData, i * BYTES_PER_TRANSACTION, BYTES_PER_TRANSACTION);
+                bytes memory currentTransactionBytes = Utils.slice(_transactionsData, i, BYTES_PER_TRANSACTION);
                 (
                     address from,
                     address to,
@@ -88,8 +88,8 @@ contract wUSDT is IERC20, EIP712Domain {
         /// TODO :)
         /// verify circuit with `commitment` as an input
 
-        require(_blockTimestamp >= block.timestamp - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
-        require(_blockTimestamp <= block.timestamp + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
+         require(_blockTimestamp >= block.timestamp - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
+         require(_blockTimestamp <= block.timestamp + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
 
         _cheapTransactionsProcessing(_transactionsData, _transactionsToProcess, _feeAccount);
 
