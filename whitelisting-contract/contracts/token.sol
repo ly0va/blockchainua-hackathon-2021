@@ -20,15 +20,6 @@ contract ERC20Token {
     /// @dev Address which may mint new tokens
     address public minter;
 
-    /// @dev The timestamp after which minting may occur
-    uint public mintingAllowedAfter;
-
-    /// @dev Minimum time between mints
-    uint32 public constant minimumTimeBetweenMints = 1 days * 365;
-
-    /// @dev Cap on the percentage of totalSupply that can be minted at each mint
-    uint8 public constant mintCap = 2;
-
     /// @dev Allowance amounts on behalf of others
     mapping (address => mapping (address => uint256)) internal allowances;
 
@@ -72,16 +63,12 @@ contract ERC20Token {
      * @dev Construct a new ZKM token
      * @param account The initial account to grant all the tokens
      * @param minter_ The account with minting ability
-     * @param mintingAllowedAfter_ The timestamp after which minting may occur
      */
-    constructor(address account, address minter_, uint mintingAllowedAfter_) public {
-        require(mintingAllowedAfter_ >= block.timestamp, "ZKM::constructor: minting can only begin after deployment");
-
+    constructor(address account, address minter_) public {
         balances[account] = totalSupply;
         emit Transfer(address(0), account, totalSupply);
         minter = minter_;
         emit MinterChanged(address(0), minter);
-        mintingAllowedAfter = mintingAllowedAfter_;
     }
 
     /**
@@ -89,33 +76,28 @@ contract ERC20Token {
      * @param minter_ The address of the new minter
      */
     function setMinter(address minter_) external {
-        require(msg.sender == minter, "ZKM::setMinter: only the minter can change the minter address");
+        require(msg.sender == minter, "only the minter can change the minter address");
         emit MinterChanged(minter, minter_);
         minter = minter_;
     }
 
     /**
      * @dev Mint new tokens
-     * @param dst The address of the destination account
+     * @param to The address of the destination account
      * @param amount The number of tokens to be minted
      */
-    function mint(address dst, uint amount) external {
-        require(msg.sender == minter, "ZKM::mint: only the minter can mint");
-        require(block.timestamp >= mintingAllowedAfter, "ZKM::mint: minting not allowed yet");
-        require(dst != address(0), "ZKM::mint: cannot transfer to the zero address");
+    function mint(address to, uint amount) external {
+        require(msg.sender == minter, "only the minter can mint");
+        require(to != address(0), "cannot transfer to the zero address");
 
-        // record the mint
-        mintingAllowedAfter = SafeMath.add(block.timestamp, minimumTimeBetweenMints);
-
-        require(amount <= SafeMath.div(SafeMath.mul(totalSupply, mintCap), 100), "ZKM::mint: exceeded mint cap");
         totalSupply = SafeMath.add(totalSupply, amount);
 
         // transfer the amount to the recipient
-        balances[dst] = SafeMath.add(balances[dst], amount);
-        emit Transfer(address(0), dst, amount);
+        balances[to] = SafeMath.add(balances[to], amount);
+        emit Transfer(address(0), to, amount);
 
         // move delegates
-        _moveDelegates(address(0), delegates[dst], amount);
+        _moveDelegates(address(0), delegates[to], amount);
     }
 
     /**
@@ -255,8 +237,8 @@ contract ERC20Token {
     }
 
     function _transferTokens(address src, address dst, uint256 amount) internal {
-        require(src != address(0), "ZKM::_transferTokens: cannot transfer from the zero address");
-        require(dst != address(0), "ZKM::_transferTokens: cannot transfer to the zero address");
+        require(src != address(0), "cannot transfer from the zero address");
+        require(dst != address(0), "cannot transfer to the zero address");
 
         balances[src] = SafeMath.sub(balances[src], amount);
         balances[dst] = SafeMath.add(balances[dst], amount);
@@ -284,7 +266,7 @@ contract ERC20Token {
     }
 
     function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint256 oldVotes, uint256 newVotes) internal {
-      uint32 blockNumber = safe32(block.number, "ZKM::_writeCheckpoint: block number exceeds 32 bits");
+      uint32 blockNumber = safe32(block.number, "block number must be less than 2 ^ 32");
 
       if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
           checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;
