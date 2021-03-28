@@ -38,12 +38,15 @@ contract Proxy {
     bytes32 private constant TARGET_POSITION = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
     /// @dev Computed as keccak256('eip1967.proxy.validator') - 1
     bytes32 private constant VALIDATOR_POSITION = 0x42d1eff0bc9b54f1e84aaa2243d81cc6bb64bab9359e64fcfed1b6828dbddc35;
+    /// @dev Computed as keccak256('eip1967.proxy.governor') - 1
+    bytes32 private constant GOVERNOR_POSITION = 0xf3c3d1bdd7e07b4d4d07ea0a29757aa82cfe13d827d29a246c7a14881d3ceeb7;
 
     constructor(address target, address governor) {
-        setTarget(target);
         Validator validator = new Validator();
         validator.transferOwnership(governor);
         _set(VALIDATOR_POSITION, address(validator));
+        _set(GOVERNOR_POSITION, governor);
+        setTarget(target);
     }
 
     function _set(bytes32 slot, address value) internal {
@@ -66,6 +69,12 @@ contract Proxy {
 
     /// @notice Returns target of contract
     /// @return target Actual implementation address
+    function governorAddress() public view returns (address) {
+        return _get(GOVERNOR_POSITION);
+    }
+
+    /// @notice Returns target of contract
+    /// @return target Actual implementation address
     function targetAddress() public view returns (address) {
         return _get(TARGET_POSITION);
     }
@@ -73,6 +82,7 @@ contract Proxy {
     /// @notice Sets new target of contract
     /// @param newTarget New actual implementation address
     function setTarget(address newTarget) public {
+        require(msg.sender == governorAddress(), "only by governor");
         _set(TARGET_POSITION, newTarget);
     }
 

@@ -29,7 +29,7 @@ describe('Tests', () => {
 
     it('should set target', async () => {
         expect(await proxy.targetAddress()).to.eq('0x0000000000000000000000000000000000000000');
-        await proxy.connect(address).setTarget(testContract.address);
+        await proxy.connect(owner).setTarget(testContract.address);
         expect(await proxy.targetAddress()).to.eq(testContract.address);
     });
 
