@@ -88,8 +88,8 @@ contract wUSDT is IERC20, EIP712Domain {
         /// TODO :)
         /// verify circuit with `commitment` as an input
 
-        // require(_blockTimestamp >= block.timestamp - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
-        // require(_blockTimestamp <= block.timestamp + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
+         require(_blockTimestamp >= block.timestamp - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
+         require(_blockTimestamp <= block.timestamp + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
 
         _cheapTransactionsProcessing(_transactionsData, _transactionsToProcess, _feeAccount);
 
