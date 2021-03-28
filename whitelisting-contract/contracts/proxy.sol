@@ -16,20 +16,36 @@ contract Validator is Ownable {
     // we allow calling specific methods with arguments that are validated by predicates, stored here
     mapping(address => mapping(bytes4 => address)) public predicates;
 
-    function setTargetStatus(address target, bool status) external onlyOwner {
+    address private governor;
+
+    constructor(address governor_) {
+        governor = governor_;
+    }
+
+    function setTargetStatus(address target, bool status) external {
+        requireGovernor(msg.sender);
         allowedTargets[target] = status;
     }
 
-    function setFallbackStatus(address target, bool status) external onlyOwner {
+    function setFallbackStatus(address target, bool status) external {
+        requireGovernor(msg.sender);
         allowedFallback[target] = status;
     }
 
-    function setMethodStatus(address target, bytes4 selector, bool status) external onlyOwner {
+    function setMethodStatus(address target, bytes4 selector, bool status) external {
+        requireGovernor(msg.sender);
         allowedMethods[target][selector] = status;
     }
 
-    function setPredicate(address target, bytes4 selector, address predicate) external onlyOwner {
+    function setPredicate(address target, bytes4 selector, address predicate) external {
+        requireGovernor(msg.sender);
         predicates[target][selector] = predicate;
+    }
+
+    /// @notice Check if specified address is is governor
+    /// @param _address Address to check
+    function requireGovernor(address _address) public view {
+        require(_address == governor, "1g"); // only by governor
     }
 }
 
@@ -39,7 +55,7 @@ contract Proxy {
     /// @dev Computed as keccak256('eip1967.proxy.validator') - 1
     bytes32 private constant VALIDATOR_POSITION = 0x42d1eff0bc9b54f1e84aaa2243d81cc6bb64bab9359e64fcfed1b6828dbddc35;
 
-    constructor(address target) {
+    constructor(address target, address) {
         setTarget(target);
         Validator validator = new Validator();
         validator.transferOwnership(msg.sender);
