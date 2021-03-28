@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-contract Governornance {
+contract Governance {
     /// @notice The duration of voting on a proposal, in blocks
     function votingPeriod() public pure returns (uint) { return 40_320; } // ~7 days in blocks (assuming 15s blocks)
 

@@ -20,8 +20,7 @@ describe('Tests', () => {
         let factory = await hardhat.ethers.getContractFactory('Test');
         testContract = await factory.deploy();
         factory = await hardhat.ethers.getContractFactory('Proxy');
-        // @ts-ignore
-        proxy = await factory.connect(owner).deploy(utils.hexZeroPad('0x00', 20), owner.address);
+        proxy = await factory.connect(owner).deploy(utils.hexZeroPad('0x00', 20), owner.getAddress());
         validator = await hardhat.ethers.getContractAt('Validator', await proxy.validatorAddress());
         foo = testContract.interface.getSighash('foo');
         bar = testContract.interface.getSighash('bar');
