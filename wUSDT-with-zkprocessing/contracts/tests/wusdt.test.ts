@@ -46,6 +46,9 @@ describe('Tests', () => {
     });
 
     it('prove block', async() => {
+        const timestamp = 1625097600;
+        await hardhat.network.provider.send("evm_setNextBlockTimestamp", [timestamp]);
+
         const transaction1 =
             (await address1.getAddress()).substr(2,40).padStart(64,'0')
             + (await address2.getAddress()).substr(2,40).padStart(64,'0')
@@ -61,7 +64,7 @@ describe('Tests', () => {
         const transactionData = ethers.utils.arrayify('0x' + transaction1 + transaction2);
         await wusdt.connect(owner).proveBlock(1,
             owner.getAddress(),
-            Date.now(),
+            timestamp,
             transactionData,
             ethers.utils.arrayify('0x0101')
         );
