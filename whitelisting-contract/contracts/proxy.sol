@@ -16,36 +16,20 @@ contract Validator is Ownable {
     // we allow calling specific methods with arguments that are validated by predicates, stored here
     mapping(address => mapping(bytes4 => address)) public predicates;
 
-    address private governor;
-
-    constructor(address governor_) {
-        governor = governor_;
-    }
-
-    function setTargetStatus(address target, bool status) external {
-        requireGovernor(msg.sender);
+    function setTargetStatus(address target, bool status) external onlyOwner {
         allowedTargets[target] = status;
     }
 
-    function setFallbackStatus(address target, bool status) external {
-        requireGovernor(msg.sender);
+    function setFallbackStatus(address target, bool status) external onlyOwner {
         allowedFallback[target] = status;
     }
 
-    function setMethodStatus(address target, bytes4 selector, bool status) external {
-        requireGovernor(msg.sender);
+    function setMethodStatus(address target, bytes4 selector, bool status) external onlyOwner {
         allowedMethods[target][selector] = status;
     }
 
-    function setPredicate(address target, bytes4 selector, address predicate) external {
-        requireGovernor(msg.sender);
+    function setPredicate(address target, bytes4 selector, address predicate) external onlyOwner {
         predicates[target][selector] = predicate;
-    }
-
-    /// @notice Check if specified address is is governor
-    /// @param _address Address to check
-    function requireGovernor(address _address) public view {
-        require(_address == governor, "1g"); // only by governor
     }
 }
 
@@ -55,10 +39,10 @@ contract Proxy {
     /// @dev Computed as keccak256('eip1967.proxy.validator') - 1
     bytes32 private constant VALIDATOR_POSITION = 0x42d1eff0bc9b54f1e84aaa2243d81cc6bb64bab9359e64fcfed1b6828dbddc35;
 
-    constructor(address target, address) {
+    constructor(address target, address governor) {
         setTarget(target);
         Validator validator = new Validator();
-        validator.transferOwnership(msg.sender);
+        validator.transferOwnership(governor);
         _set(VALIDATOR_POSITION, address(validator));
     }
 

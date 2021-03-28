@@ -244,6 +244,4 @@ interface ProxyInterface {
     function setMethodStatus(address target, bytes4 selector, bool status) external;
 
     function setPredicate(address target, bytes4 selector, address predicate) external;
-    
-    function setTarget(address newTarget) external;
 }
