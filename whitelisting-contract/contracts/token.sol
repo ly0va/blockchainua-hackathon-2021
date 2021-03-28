@@ -2,7 +2,7 @@ pragma solidity ^0.8.0;
 
 // SPDX-License-Identifier: UNLICENSED
 
-import "./SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract ERC20Token {
     /// @dev EIP-20 token name for this token

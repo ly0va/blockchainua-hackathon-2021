@@ -5,7 +5,7 @@ contract Governance {
 
     mapping(address => bool) availableOperators;
 
-    function Governance(address _governor) public {
+    constructor(address _governor) public {
         governor = _governor;
     }
 

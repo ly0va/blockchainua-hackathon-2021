@@ -1,5 +1,7 @@
 pragma solidity ^0.7.0;
 
+import "./ECRecover.sol";
+
 /**
  * @title EIP712
  * @notice A library that provides EIP712 helper functions

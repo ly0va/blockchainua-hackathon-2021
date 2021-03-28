@@ -6,14 +6,14 @@ import "./ECRecover.sol";
 import "./EIP712.sol";
 import "./Governance.sol";
 import "./Utils.sol";
+import "./SafeMath.sol";
 
-contract wBTC is IERC20 {
+contract wUSDT is IERC20, EIP712Domain {
     using SafeMath for uint256;
 
     string  public name     = "Wrapped USDT";
     string  public symbol   = "wUSDT";
     uint8   public decimals = 6;
-    address public USDT     = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
     mapping(address => uint256) internal balances;
     mapping(address => mapping(address => uint256)) internal allowed;
@@ -24,14 +24,19 @@ contract wBTC is IERC20 {
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, address indexed to, uint256 amount);
 
+    address public USDT;
+
     uint256 internal rootHash;
 
     uint256 constant BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER = 3 hours;
     uint256 constant BLOCK_TIMESTAMP_POSSIBLE_DELTA = 1 minutes;
 
-    function wBTC(Governance _governance, uint256 _initialRootHash) public {
+    constructor(Governance _governance, address _USDT, uint256 _initialRootHash) public {
         governance = _governance;
+        USDT = _USDT;
         rootHash = _initialRootHash;
+
+        DOMAIN_SEPARATOR = EIP712.makeDomainSeparator("wUSDT", "1");
     }
 
     event FeeCollected(address indexed from, address feeAccount, uint256 fee);
@@ -45,13 +50,13 @@ contract wBTC is IERC20 {
     ) internal {
         uint256 totalFee = 0;
         for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i++) {
-            if (_transactionsToProcess[i / BYTES_PER_TRANSACTION]) {
+            if (uint8(_transactionsToProcess[i / BYTES_PER_TRANSACTION]) != 0) {
                 bytes memory currentTransactionBytes = Utils.slice(_transactionsData, i * BYTES_PER_TRANSACTION, BYTES_PER_TRANSACTION);
                 (
                     address from,
                     address to,
                     uint256 amount,
-                    uint256 fee,
+                    uint256 fee
                 ) = abi.decode(currentTransactionBytes, (address, address, uint256, uint256));
                 if (balances[from] >= amount.add(fee)) {
                     balances[from] = balances[from].sub(amount.add(fee));
@@ -76,15 +81,15 @@ contract wBTC is IERC20 {
     ) external {
         require(governance.isOperatorValid(msg.sender));
 
-        bytes32 commitment = sha256(abi.encodePacked(rootHash, _newStorageRoot);
+        bytes32 commitment = sha256(abi.encodePacked(rootHash, _newStorageRoot));
         commitment = sha256(abi.encodePacked(commitment, _feeAccount));
         commitment = sha256(abi.encodePacked(commitment, _blockTimestamp));
         commitment = sha256(abi.encodePacked(commitment, _transactionsData));
         /// TODO :)
         /// verify circuit with `commitment` as an input
 
-        require(_blockTimestamp >= now - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
-        require(_blockTimestamp <= now + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
+        require(_blockTimestamp >= block.timestamp - BLOCK_TIMESTAMP_CAN_NOT_BE_OLDER);
+        require(_blockTimestamp <= block.timestamp + BLOCK_TIMESTAMP_POSSIBLE_DELTA);
 
         _cheapTransactionsProcessing(_transactionsData, _transactionsToProcess, _feeAccount);
 
@@ -126,7 +131,7 @@ contract wBTC is IERC20 {
         totalSupply_ = totalSupply_.sub(_amount);
         balances[msg.sender] = balance.sub(_amount);
 
-        IUSDT(USDT).transfer(address(this), _to, _amount);
+        IUSDT(USDT).transfer(_to, _amount);
 
         emit Burn(msg.sender, _to, _amount);
         emit Transfer(msg.sender, address(0), _amount);
@@ -140,14 +145,14 @@ contract wBTC is IERC20 {
      * @param spender   Spender's address
      * @return Allowance amount
      */
-    function allowance(address owner, address spender) external view returns (uint256) {
+    function allowance(address owner, address spender) external override view returns (uint256) {
         return allowed[owner][spender];
     }
 
     /**
      * @dev Get totalSupply of token
      */
-    function totalSupply() external view returns (uint256) {
+    function totalSupply() external override view returns (uint256) {
         return totalSupply_;
     }
 
@@ -155,7 +160,7 @@ contract wBTC is IERC20 {
      * @dev Get token balance of an account
      * @param account address The account
      */
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external override view returns (uint256) {
         return balances[account];
     }
 
@@ -166,7 +171,7 @@ contract wBTC is IERC20 {
      * @param value     Allowance amount
      * @return True if successful
      */
-    function approve(address spender, uint256 value) external returns (bool) {
+    function approve(address spender, uint256 value) external override returns (bool) {
         _approve(msg.sender, spender, value);
         return true;
     }
@@ -199,7 +204,7 @@ contract wBTC is IERC20 {
         address from,
         address to,
         uint256 value
-    ) external returns (bool) {
+    ) external override returns (bool) {
         require(
             value <= allowed[from][msg.sender],
             "ERC20: transfer amount exceeds allowance"
@@ -215,7 +220,7 @@ contract wBTC is IERC20 {
      * @param value Transfer amount
      * @return True if successful
      */
-    function transfer(address to, uint256 value) external returns (bool) {
+    function transfer(address to, uint256 value) external override returns (bool) {
         _transfer(msg.sender, to, value);
         return true;
     }
@@ -563,10 +568,10 @@ contract wBTC is IERC20 {
         uint256 validBefore
     ) private view {
         require(
-            now > validAfter,
+            block.timestamp > validAfter,
             "authorization is not yet valid"
         );
-        require(now < validBefore, "authorization is expired");
+        require(block.timestamp < validBefore, "authorization is expired");
         _requireUnusedAuthorization(authorizer, nonce);
     }
 
@@ -819,27 +824,6 @@ contract wBTC is IERC20 {
         uint256 increment
     ) internal {
         _approve(owner, spender, allowed[owner][spender].add(increment));
-    }
-
-    /**
-     * @notice Internal function to decrease the allowance by a given decrement
-     * @param owner     Token owner's address
-     * @param spender   Spender's address
-     * @param decrement Amount of decrease
-     */
-    function _decreaseAllowance(
-        address owner,
-        address spender,
-        uint256 decrement
-    ) internal {
-        _approve(
-            owner,
-            spender,
-            allowed[owner][spender].sub(
-                decrement,
-                "ERC20: decreased allowance below zero"
-            )
-        );
     }
 
     /**
