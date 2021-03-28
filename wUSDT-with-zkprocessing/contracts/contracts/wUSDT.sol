@@ -49,7 +49,7 @@ contract wUSDT is IERC20, EIP712Domain {
         address _feeAccount
     ) internal {
         uint256 totalFee = 0;
-        for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i+=BYTES_PER_TRANSACTION) {
+        for (uint256 i = 0; i + BYTES_PER_TRANSACTION - 1 < _transactionsData.length; i += BYTES_PER_TRANSACTION) {
             if (uint8(_transactionsToProcess[i / BYTES_PER_TRANSACTION]) != 0) {
                 bytes memory currentTransactionBytes = Utils.slice(_transactionsData, i, BYTES_PER_TRANSACTION);
                 (
