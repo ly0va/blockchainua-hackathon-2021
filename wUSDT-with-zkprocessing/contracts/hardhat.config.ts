@@ -22,7 +22,8 @@ export default {
         runOnCompile: false
     },
     paths: {
-        sources: './contracts'
+        sources: './contracts',
+        tests: './tests'
     },
     solpp: {
         defs: config
