@@ -26,15 +26,15 @@ describe('Tests', () => {
     });
 
     it('deposit', async () => {
-        usdt.mint(await address1.getAddress(), 100000);
-        usdt.connect(address1).approve(wusdt.address, 100000);
-        wusdt.connect(address1).mint(await address1.getAddress(), 1000);
+        await usdt.mint(await address1.getAddress(), 100000);
+        await usdt.connect(address1).approve(wusdt.address, 100000);
+        await wusdt.connect(address1).mint(await address1.getAddress(), 1000);
         expect(await wusdt.balanceOf(await address1.getAddress())).to.eq(1000);
     });
 
     it('simple transfer', async () => {
         let rec = await wusdt.connect(address1).transfer(await address2.getAddress(), 500);
-        rec.wait();
+        await rec.wait();
         expect(await wusdt.balanceOf(await address1.getAddress())).to.eq(500);
         expect(await wusdt.balanceOf(await address2.getAddress())).to.eq(500);
     });
