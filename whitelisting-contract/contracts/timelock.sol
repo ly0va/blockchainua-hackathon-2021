@@ -4,78 +4,61 @@ import "./SafeMath.sol";
 
 contract Timelock {
     event NewAdmin(address indexed newAdmin);
-    event NewPendingAdmin(address indexed newPendingAdmin);
     event NewDelay(uint indexed newDelay);
-    event CancelTransaction(bytes32 indexed txHash, address indexed target, uint value, string signature,  bytes data, uint eta);
-    event ExecuteTransaction(bytes32 indexed txHash, address indexed target, uint value, string signature,  bytes data, uint eta);
-    event QueueTransaction(bytes32 indexed txHash, address indexed target, uint value, string signature, bytes data, uint eta);
+    event CancelTransaction(bytes32 indexed txHash, address indexed target, string signature,  bytes data, uint eta);
+    event ExecuteTransaction(bytes32 indexed txHash, address indexed target, string signature,  bytes data, uint eta);
+    event QueueTransaction(bytes32 indexed txHash, address indexed target, string signature, bytes data, uint eta);
 
     uint public constant GRACE_PERIOD = 14 days;
-    uint public constant MINIMUM_DELAY = 2 days;
-    uint public constant MAXIMUM_DELAY = 30 days;
 
     address public admin;
-    address public pendingAdmin;
     uint public delay;
 
     mapping (bytes32 => bool) public queuedTransactions;
 
     constructor(address admin_, uint delay_) public {
-        require(delay_ >= MINIMUM_DELAY);
-        require(delay_ <= MAXIMUM_DELAY);
-
         admin = admin_;
         delay = delay_;
     }
 
     function setDelay(uint delay_) public {
         require(msg.sender == address(this));
-        require(delay_ >= MINIMUM_DELAY);
-        require(delay_ <= MAXIMUM_DELAY);
         delay = delay_;
 
         emit NewDelay(delay);
     }
 
-    function acceptAdmin() public {
-        require(msg.sender == pendingAdmin);
-        admin = msg.sender;
-        pendingAdmin = address(0);
+    function setAdmin(address newAdmin_) public {
+        require(msg.sender == admin);
+        admin = newAdmin_;
 
-        emit NewAdmin(admin);
+        emit NewAdmin(newAdmin_);
     }
 
-    function setPendingAdmin(address pendingAdmin_) public {
-        require(msg.sender == address(this));
-        pendingAdmin = pendingAdmin_;
-
-        emit NewPendingAdmin(pendingAdmin);
-    }
-
-    function queueTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public returns (bytes32) {
+    function queueTransaction(address target, string memory signature, bytes memory data, uint eta) public returns (bytes32) {
         require(msg.sender == admin);
         require(eta >= SafeMath.add(block.timestamp, delay));
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
+        bytes32 txHash = keccak256(abi.encode(target, signature, data, eta));
         queuedTransactions[txHash] = true;
 
-        emit QueueTransaction(txHash, target, value, signature, data, eta);
+        emit QueueTransaction(txHash, target, signature, data, eta);
         return txHash;
     }
 
-    function cancelTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public {
+    function cancelTransaction(address target, string memory signature, bytes memory data, uint eta) public {
         require(msg.sender == admin);
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
+        bytes32 txHash = keccak256(abi.encode(target, signature, data, eta));
         queuedTransactions[txHash] = false;
 
-        emit CancelTransaction(txHash, target, value, signature, data, eta);
+        emit CancelTransaction(txHash, target, signature, data, eta);
     }
 
-    function executeTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public payable returns (bytes memory) {
+    function executeTransaction(address target, string memory signature, bytes memory data, uint eta) public payable returns (bytes memory) {
         require(msg.sender == admin);
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
+        bytes32 txHash = keccak256(abi.encode(target, signature, data, eta));
         require(queuedTransactions[txHash]);
         require(block.timestamp >= eta);
         require(block.timestamp <= SafeMath.add(eta, GRACE_PERIOD));
@@ -91,10 +74,10 @@ contract Timelock {
         }
 
         // solium-disable-next-line security/no-call-value
-        (bool success, bytes memory returnData) = target.call{value: value}(callData);
+        (bool success, bytes memory returnData) = target.call(callData);
         require(success);
 
-        emit ExecuteTransaction(txHash, target, value, signature, data, eta);
+        emit ExecuteTransaction(txHash, target, signature, data, eta);
 
         return returnData;
     }

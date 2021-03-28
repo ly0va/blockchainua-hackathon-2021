@@ -2,18 +2,6 @@ pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 contract Governornance {
-    /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
-    function quorumVotes() public pure returns (uint) { return 40_000_000e18; } // 4% of ZKM
-
-    /// @notice The number of votes required in order for a voter to become a proposer
-    function proposalThreshold() public pure returns (uint) { return 10_000_000e18; } // 1% of ZKM
-
-    /// @notice The maximum number of actions that can be included in a proposal
-    function proposalMaxOperations() public pure returns (uint) { return 10; } // 10 actions
-
-    /// @notice The delay before voting on a proposal may take place, once proposed
-    function votingDelay() public pure returns (uint) { return 1; } // 1 block
-
     /// @notice The duration of voting on a proposal, in blocks
     function votingPeriod() public pure returns (uint) { return 40_320; } // ~7 days in blocks (assuming 15s blocks)
 
@@ -34,7 +22,6 @@ contract Governornance {
         address proposer;
         uint eta;
 
-        uint value;
         string signature;
         bytes calldatas;
 
@@ -76,7 +63,7 @@ contract Governornance {
     mapping (address => uint) public latestProposalIds;
 
     /// @notice An event emitted when a new proposal is created
-    event ProposalCreated(uint id, address proposer, address target, uint value, string signature, bytes calldatas, uint startBlock, uint endBlock);
+    event ProposalCreated(uint id, address proposer, address target, string signature, bytes calldatas, uint startBlock, uint endBlock);
 
     /// @notice An event emitted when a vote has been cast on a proposal
     event VoteCast(address voter, uint proposalId, bool support, uint votes);
@@ -96,8 +83,8 @@ contract Governornance {
         target = ProxyInterface(target_);
     }
 
-    function propose(uint value, string memory signature, bytes memory calldatas) public returns (uint) {
-        require(zkm.getPriorVotes(msg.sender, sub256(block.number, 1)) > proposalThreshold());
+    function propose(string memory signature, bytes memory calldatas) public returns (uint) {
+        require(zkm.getPriorVotes(msg.sender, sub256(block.number, 1)) != 0);
       
         uint latestProposalId = latestProposalIds[msg.sender];
         if (latestProposalId != 0) {
@@ -106,7 +93,7 @@ contract Governornance {
           require(proposersLatestProposalState != ProposalState.Pending);
         }
 
-        uint startBlock = add256(block.number, votingDelay());
+        uint startBlock = add256(block.number, 1);
         uint endBlock = add256(startBlock, votingPeriod());
 
         proposalCount++;
@@ -114,7 +101,6 @@ contract Governornance {
         newProposal.id = proposalCount;
         newProposal.proposer = msg.sender;
         newProposal.eta = 0;
-        newProposal.value = value;
         newProposal.signature = signature;
         newProposal.startBlock = startBlock;
         newProposal.endBlock = endBlock;
@@ -125,7 +111,7 @@ contract Governornance {
 
         latestProposalIds[newProposal.proposer] = newProposal.id;
 
-        emit ProposalCreated(newProposal.id, msg.sender, address(target), value, signature, calldatas, startBlock, endBlock);
+        emit ProposalCreated(newProposal.id, msg.sender, address(target), signature, calldatas, startBlock, endBlock);
         return newProposal.id;
     }
 
@@ -134,15 +120,15 @@ contract Governornance {
         Proposal storage proposal = proposals[proposalId];
         uint eta = add256(block.timestamp, timelock.delay());
         
-        _queueOrRevert(address(target), proposal.value, proposal.signature, proposal.calldatas, eta);
+        _queueOrRevert(address(target), proposal.signature, proposal.calldatas, eta);
         
         proposal.eta = eta;
         emit ProposalQueued(proposalId, eta);
     }
 
-    function _queueOrRevert(address target, uint value, string memory signature, bytes memory data, uint eta) internal {
-        require(!timelock.queuedTransactions(keccak256(abi.encode(target, value, signature, data, eta))));
-        timelock.queueTransaction(target, value, signature, data, eta);
+    function _queueOrRevert(address target, string memory signature, bytes memory data, uint eta) internal {
+        require(!timelock.queuedTransactions(keccak256(abi.encode(target, signature, data, eta))));
+        timelock.queueTransaction(target, signature, data, eta);
     }
 
     function execute(uint proposalId) public payable {
@@ -150,7 +136,7 @@ contract Governornance {
         Proposal storage proposal = proposals[proposalId];
         proposal.executed = true;
         
-        timelock.executeTransaction{value: proposal.value}(address(target), proposal.value, proposal.signature, proposal.calldatas, proposal.eta);
+        timelock.executeTransaction(address(target), proposal.signature, proposal.calldatas, proposal.eta);
         
         emit ProposalExecuted(proposalId);
     }
@@ -160,17 +146,16 @@ contract Governornance {
         require(state != ProposalState.Executed);
 
         Proposal storage proposal = proposals[proposalId];
-        require(zkm.getPriorVotes(proposal.proposer, sub256(block.number, 1)) < proposalThreshold());
 
         proposal.canceled = true;
-        timelock.cancelTransaction(address(target), proposal.value, proposal.signature, proposal.calldatas, proposal.eta);
+        timelock.cancelTransaction(address(target), proposal.signature, proposal.calldatas, proposal.eta);
 
         emit ProposalCanceled(proposalId);
     }
 
-    function getActions(uint proposalId) public view returns (address target, uint value, string memory signature, bytes memory calldatas) {
+    function getActions(uint proposalId) public view returns (address target, string memory signature, bytes memory calldatas) {
         Proposal storage p = proposals[proposalId];
-        return (address(target), p.value, p.signature, p.calldatas);
+        return (target, p.signature, p.calldatas);
     }
 
     function getReceipt(uint proposalId, address voter) public view returns (Receipt memory) {
@@ -186,7 +171,7 @@ contract Governornance {
             return ProposalState.Pending;
         } else if (block.number <= proposal.endBlock) {
             return ProposalState.Active;
-        } else if (proposal.forVotes <= proposal.againstVotes || proposal.forVotes < quorumVotes()) {
+        } else if (proposal.forVotes <= proposal.againstVotes) {
             return ProposalState.Defeated;
         } else if (proposal.eta == 0) {
             return ProposalState.Succeeded;
@@ -242,9 +227,9 @@ interface TimelockInterface {
     function GRACE_PERIOD() external view returns (uint);
     function acceptAdmin() external;
     function queuedTransactions(bytes32 hash) external view returns (bool);
-    function queueTransaction(address target, uint value, string calldata signature, bytes calldata data, uint eta) external returns (bytes32);
-    function cancelTransaction(address target, uint value, string calldata signature, bytes calldata data, uint eta) external;
-    function executeTransaction(address target, uint value, string calldata signature, bytes calldata data, uint eta) external payable returns (bytes memory);
+    function queueTransaction(address target, string calldata signature, bytes calldata data, uint eta) external returns (bytes32);
+    function cancelTransaction(address target, string calldata signature, bytes calldata data, uint eta) external;
+    function executeTransaction(address target, string calldata signature, bytes calldata data, uint eta) external payable returns (bytes memory);
 }
 
 interface ZKMInterface {
@@ -259,4 +244,6 @@ interface ProxyInterface {
     function setMethodStatus(address target, bytes4 selector, bool status) external;
 
     function setPredicate(address target, bytes4 selector, address predicate) external;
+    
+    function setTarget(address newTarget) external;
 }
