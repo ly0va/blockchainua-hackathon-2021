@@ -16,10 +16,10 @@ describe('Tests', () => {
 
     before('deploy target and proxy', async () => {
         [owner, address] = await hardhat.ethers.getSigners();
-        let factory = await hardhat.ethers.getContractFactory('Proxy');
-        proxy = await factory.connect(owner).deploy();
-        factory = await hardhat.ethers.getContractFactory('Test');
+        let factory = await hardhat.ethers.getContractFactory('Test');
         testContract = await factory.deploy();
+        factory = await hardhat.ethers.getContractFactory('Proxy');
+        proxy = await factory.connect(owner).deploy(ethers.utils.hexZeroPad('0x00', 20));
         foo = testContract.interface.getSighash('foo');
         bar = testContract.interface.getSighash('bar');
     });

@@ -20,19 +20,23 @@ contract Proxy is Ownable {
     // we allow calling specific methods with arguments that are validated by predicates, stored here
     mapping(address => mapping(bytes4 => address)) public predicates;
 
-    function setTargetStatus(address target, bool status) public onlyOwner {
+    constructor(address target) {
+        setTarget(target);
+    }
+
+    function setTargetStatus(address target, bool status) external onlyOwner {
         allowedTargets[target] = status;
     }
 
-    function setFallbackStatus(address target, bool status) public onlyOwner {
+    function setFallbackStatus(address target, bool status) external onlyOwner {
         allowedFallback[target] = status;
     }
 
-    function setMethodStatus(address target, bytes4 selector, bool status) public onlyOwner {
+    function setMethodStatus(address target, bytes4 selector, bool status) external onlyOwner {
         allowedMethods[target][selector] = status;
     }
 
-    function setPredicate(address target, bytes4 selector, address predicate) public onlyOwner {
+    function setPredicate(address target, bytes4 selector, address predicate) external onlyOwner {
         predicates[target][selector] = predicate;
     }
 
